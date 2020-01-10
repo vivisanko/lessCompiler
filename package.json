@@ -1,0 +1,16 @@
+{
+  "name": "compilerforless",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/less": "^3.0.1",
+    "@types/node": "^13.1.6",
+    "less": "^3.10.3"
+  }
+}
