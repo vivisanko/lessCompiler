@@ -22,29 +22,42 @@ const checkObservables = () => __awaiter(void 0, void 0, void 0, function* () {
     console.log('in check Observable');
     const observables = [];
     const content = yield readFile(filePath, 'utf-8');
-    const regexp = /^@import "(.+)";$/gm;
+    const regexp = /^@import "(.+).less";$/gm;
     const matches = content.match(regexp);
     console.log('matches', matches);
     if (matches) {
-        matches.forEach(match => observables.push(match.substring(8, 2)));
+        matches.forEach(match => observables.push(match.substring(9, match.length - 2)));
     }
     ;
-    return observables;
+    console.log('observables in checkObservables', observables);
+    return Promise.resolve(observables);
 });
 const getStartedLessMonitoring = () => __awaiter(void 0, void 0, void 0, function* () {
-    const otherObservables = checkObservables();
-    console.log('otherObservable after checking', otherObservables);
+    const otherObservables = yield checkObservables;
     fs.watchFile(mainObservable, (_curr, _prev) => {
         console.log(`${mainObservable} file Changed`);
         execProcess(`node ${pathToLessc} ${filePath} > ./public/style.css`);
-        checkObservables();
+        otherObservables()
+            .then((observables) => {
+            observables.forEach(path => {
+                const pathObservable = `./${path}`;
+                fs.watchFile(pathObservable, (_curr, _prev) => {
+                    console.log(`${pathObservable} file Changed`);
+                    execProcess(`node ${pathToLessc} ${filePath} > ./public/style.css`);
+                });
+            });
+        });
     });
-    //   otherObservable.forEach(path=>{
-    //       const pathObservable = `./${path}`;
-    //       fs.watchFile(pathObservable, (curr, prev) => {
-    //                 console.log(`${pathObservable} file Changed`);
-    //                 execProcess(`node ${pathToLessc} ${filePath} > ./public/style.css`);
-    //         })
-    //   });
+    otherObservables()
+        .then((observables) => {
+        console.log('otherObservable after checking', observables);
+        observables.forEach(path => {
+            const pathObservable = `./${path}`;
+            fs.watchFile(pathObservable, (_curr, _prev) => {
+                console.log(`${pathObservable} file Changed`);
+                execProcess(`node ${pathToLessc} ${filePath} > ./public/style.css`);
+            });
+        });
+    });
 });
 module.exports = getStartedLessMonitoring;
