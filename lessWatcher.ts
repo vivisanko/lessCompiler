@@ -1,58 +1,66 @@
 import * as fs from 'fs';
 import {promisify} from 'util';
 
-const readFile =promisify(fs.readFile);
+const readFile = promisify(fs.readFile);
 const path = require('path');
 // import * as less from 'less';
 
 const execProcess = require('./lessRebuilder');
 
 const pathToLessc = path.join(__dirname,'node_modules','less','bin','lessc');
-let filePath = path.join(__dirname,'public','style.less')
+const filePathMain = path.join(__dirname,'public','style.less')
+const mainObservable = 'public/style.less';
 
-const mainObservable = './public/style.less';
+let allObservables = new Map();
 
-const checkObservables = async () => {
+const checkObservables = async (filePath: string, observable: string) => {
     console.log('in check Observable'); 
-    const observables: String [] = [];
-    const content = await readFile(filePath, 'utf-8');
-    const regexp = /^@import "(.+).less";$/gm;
+    allObservables.set(filePath, observable);
+    let observables = new Map();
+    const contentPath = path.join(__dirname, observable);
+    const content = await readFile(contentPath, 'utf-8');
+    console.log('contentPath in checkObservables', contentPath);
+    
+    const regexp = /^@import ["'](.+).less["'];$/gm;
     const matches = content.match(regexp);
-    console.log('matches', matches);
     if(matches) {
-    matches.forEach(match=>observables.push(match.substring(9, match.length - 2)));
+     await Promise.all(
+                matches.map(async match=>{
+                  const moreObservables = await checkObservables;
+                  moreObservables(match, match.substring(9, match.length - 2))
+                  .then(otherObservables =>{      
+                    console.log('otherObservables', otherObservables);
+                    // for (const [key, value] of otherObservables) {
+                    //   observables.set(key, value);
+                    // }
+                  observables = new Map([...otherObservables, ...observables]);
+                  return Promise.resolve(otherObservables);
+                  })
+                })
+              );
     };
     console.log('observables in checkObservables', observables);
     
-    return Promise.resolve(observables);
+    return Promise.resolve(new Map([...observables, ...allObservables]));
 };
 
 
 
 const  getStartedLessMonitoring = async () => {
-   const otherObservables = await checkObservables;
-   fs.watchFile(mainObservable, (_curr, _prev) => {
-    console.log(`${mainObservable} file Changed`);
-    execProcess(`node ${pathToLessc} ${filePath} > ./public/style.css`);
-    otherObservables()
-    .then((observables)=>{
-      observables.forEach(path=>{
-              const pathObservable = `./${path}`;
-              fs.watchFile(pathObservable, (_curr, _prev) => {
-                        console.log(`${pathObservable} file Changed`);
-                        execProcess(`node ${pathToLessc} ${filePath} > ./public/style.css`);
-                })
-    });
-  });
-});
-   otherObservables()
+   const checkAllObservables = await checkObservables;
+
+   checkAllObservables(filePathMain, mainObservable)
    .then((observables)=>{
     console.log('otherObservable after checking', observables);
-    observables.forEach(path=>{
+    console.log('observables.values', Array.from(observables.values()));
+
+    Array.from(observables.values()).forEach(path=>{
+      console.log('path', path);
+      
       const pathObservable = `./${path}`;
       fs.watchFile(pathObservable, (_curr, _prev) => {
                 console.log(`${pathObservable} file Changed`);
-                execProcess(`node ${pathToLessc} ${filePath} > ./public/style.css`);
+                execProcess(`node ${pathToLessc} ${filePathMain} > ./public/style.css`);
         })
 });
 
