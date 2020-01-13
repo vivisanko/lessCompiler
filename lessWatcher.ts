@@ -29,7 +29,7 @@ class LessWatcher implements ILessWatcherData {
     this.regexp =  /^@import ["'](.+).less["'];$/gm;
   }
 
-  async processArray(arrayMatches, observables) {
+  async processArray(arrayMatches: string [], observables: Map<string, string>) {
     const moreObservables = await this.checkObservables;
     let localObservables = observables;
     for(const match of arrayMatches) {
@@ -58,8 +58,8 @@ class LessWatcher implements ILessWatcherData {
     this.allObservables.set(filePath, observable);
     let observables = new Map<string, string>();
     const contentPath = path.join(__dirname, observable);
-    const content = await this.readFile(contentPath, 'utf-8');
-    const matches = content.match(this.regexp);
+    const content: string = await this.readFile(contentPath, 'utf-8');
+    const matches: string [] | null = content.match(this.regexp);
 
     if(matches) {
      observables = await this.processArray(matches, observables);
