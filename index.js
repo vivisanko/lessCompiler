@@ -2,7 +2,6 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const {LessWatcher} = require('./lessWatcher');
-console.log("in index");
 
 console.log('class watcher', LessWatcher);
 const lessMonitoringSystem = new LessWatcher();

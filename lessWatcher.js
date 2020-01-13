@@ -10,15 +10,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs");
-const util_1 = require("util");
-const path = require('path');
+const path = require("path");
 const childProcess = require("child_process");
-// interface ILessWatcherData {
-//   pathToLessc: string;
-//   filePathMain: string;
-//   mainObservable: string;
-//   allObservables:  Map<string, string>;
-// }
+const util_1 = require("util");
 class LessWatcher {
     constructor() {
         this.checkObservables = (filePath, observable) => __awaiter(this, void 0, void 0, function* () {
@@ -40,10 +34,11 @@ class LessWatcher {
                 console.log('otherObservable after checking', observables);
                 Array.from(observables.keys()).forEach(key => {
                     const pathObservable = `./${observables.get(key)}`;
-                    fs.watch(pathObservable, (_curr, _prev) => {
+                    const watcher = fs.watch(pathObservable, (_curr, _prev) => {
                         console.log(`${pathObservable} file Changed`);
                         this.execProcess(`node ${this.pathToLessc} ${this.filePathMain} > ./public/style.css`);
-                        this.getStartedLessMonitoring(key, observables.get(key));
+                        watcher.close();
+                        this.getStartedLessMonitoring();
                     });
                 });
             });

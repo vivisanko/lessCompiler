@@ -1,19 +1,18 @@
 import * as fs from 'fs';
+import * as path from 'path';
+import * as childProcess from 'child_process';
 import {promisify} from 'util';
-const path = require('path');
-const childProcess = require("child_process");
 
+interface ILessWatcherData {
+  pathToLessc: string;
+  filePathMain: string;
+  mainObservable: string;
+  allObservables:  Map<string, string>;
+  readFile: any;
+  regexp: RegExp;
+}
 
-
-
-// interface ILessWatcherData {
-//   pathToLessc: string;
-//   filePathMain: string;
-//   mainObservable: string;
-//   allObservables:  Map<string, string>;
-// }
-
-class LessWatcher  {
+class LessWatcher implements ILessWatcherData {
   pathToLessc: string;
   filePathMain: string;
   mainObservable: string;
@@ -22,14 +21,13 @@ class LessWatcher  {
   regexp: RegExp;
 
    constructor() {
-     this.pathToLessc =  path.join(__dirname,'node_modules','less','bin','lessc');
-     this.filePathMain =  path.join(__dirname,'public','style.less');
-     this.mainObservable = 'public/style.less';
-     this.allObservables = new Map();
-     this.readFile = promisify(fs.readFile);
-     this.regexp =  /^@import ["'](.+).less["'];$/gm;
-
-    }
+    this.pathToLessc =  path.join(__dirname,'node_modules','less','bin','lessc');
+    this.filePathMain =  path.join(__dirname,'public','style.less');
+    this.mainObservable = 'public/style.less';
+    this.allObservables = new Map();
+    this.readFile = promisify(fs.readFile);
+    this.regexp =  /^@import ["'](.+).less["'];$/gm;
+  }
 
   async processArray(arrayMatches, observables) {
     const moreObservables = await this.checkObservables;
@@ -44,7 +42,7 @@ class LessWatcher  {
     return localObservables;
   }
 
-  execProcess(command) {
+  execProcess(command: string) {
     childProcess.exec(command, function(error, stdout, stderr) {
 
         console.log(`stdout: ${stdout}`);
@@ -54,7 +52,7 @@ class LessWatcher  {
             console.log(`error: ${error}`);
         }
     });
-}
+  }
 
   checkObservables = async (filePath: string, observable: string) => {
     this.allObservables.set(filePath, observable);
@@ -72,20 +70,21 @@ class LessWatcher  {
   getStartedLessMonitoring = async (filePathMatch: string = this.filePathMain, filePath: string = this.mainObservable) => {
       const checkAllObservables = await this.checkObservables;
     
-      checkAllObservables(filePathMatch, filePath)
-      .then((observables)=>{
-        console.log('otherObservable after checking', observables);
-    
-        Array.from(observables.keys()).forEach(key=>{          
-          const pathObservable = `./${observables.get(key)}`;
-          
-          fs.watch(pathObservable, (_curr, _prev) => {
-            console.log(`${pathObservable} file Changed`);
-            this.execProcess(`node ${this.pathToLessc} ${this.filePathMain} > ./public/style.css`);
-            this.getStartedLessMonitoring(key,observables.get(key));
-            })
-        });
+    checkAllObservables(filePathMatch, filePath)
+    .then((observables)=>{
+      console.log('otherObservable after checking', observables);
+  
+    Array.from(observables.keys()).forEach(key=>{          
+        const pathObservable = `./${observables.get(key)}`;
+        
+        const watcher =  fs.watch(pathObservable, (_curr, _prev) => {
+          console.log(`${pathObservable} file Changed`);
+          this.execProcess(`node ${this.pathToLessc} ${this.filePathMain} > ./public/style.css`);
+          watcher.close();
+          this.getStartedLessMonitoring();
+          })
       });
+    });
   }
 }
 
