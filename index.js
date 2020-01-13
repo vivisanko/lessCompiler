@@ -1,11 +1,13 @@
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
-const getStartedLessMonitoring = require('./lessWatcher');
-
+const {LessWatcher} = require('./lessWatcher');
 console.log("in index");
 
-getStartedLessMonitoring();
+console.log('class watcher', LessWatcher);
+const lessMonitoringSystem = new LessWatcher();
+lessMonitoringSystem.getStartedLessMonitoring();
+
 const server=http.createServer((req, res)=>{
 console.log('req.url', req.url);
 let filePath = path.join(__dirname,'public', req.url==='/'? 'index.html': req.url);
