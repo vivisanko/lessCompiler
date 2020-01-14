@@ -1,11 +1,6 @@
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
-const {LessWatcher} = require('./lessWatcher');
-
-console.log('class watcher', LessWatcher);
-const lessMonitoringSystem = new LessWatcher();
-lessMonitoringSystem.getStartedLessMonitoring();
 
 const server=http.createServer((req, res)=>{
 console.log('req.url', req.url);

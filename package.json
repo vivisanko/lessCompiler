@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node node_modules/less/bin/lessc ./public/style.less > ./public/style.css && tsc && node index"
+    "build": "node node_modules/less/bin/lessc ./public/style.less > ./public/style.css && tsc",
+    "watch": "node observers",
+    "start": "npm run build && node index"
   },
   "author": "",
   "license": "ISC",
@@ -14,5 +16,8 @@
     "@types/node": "^13.1.6",
     "less": "^3.10.3",
     "tslint": "^5.20.1"
+  },
+  "dependencies": {
+    "typescript": "^3.7.4"
   }
 }
