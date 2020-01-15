@@ -78,7 +78,6 @@ export class LessWatcher implements ILessWatcherData {
 
 
     private async processArray(arrayMatches: string [], observables: Map<string, string>, fileDir: string) {
-
         const moreObservables = await Promise.resolve(this.checkObservables);
         let localObservables = observables;
 
@@ -109,7 +108,7 @@ export class LessWatcher implements ILessWatcherData {
         .then((observables) => {
             if (observables) {
                 Array.from(observables.keys()).forEach(key => {
-                    console.log("observables path", key);
+                    console.log("path to observable", key);
 
                     const watcher =  fs.watch(key, (_curr, _prev) => {
                     console.log(`${key} file Changed`);

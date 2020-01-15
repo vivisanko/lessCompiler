@@ -15,9 +15,7 @@
     "@types/less": "^3.0.1",
     "@types/node": "^13.1.6",
     "less": "^3.10.3",
-    "tslint": "^5.20.1"
-  },
-  "dependencies": {
+    "tslint": "^5.20.1",
     "typescript": "^3.7.4"
   }
 }
