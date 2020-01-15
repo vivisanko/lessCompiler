@@ -3,7 +3,6 @@ import { LessWatcher } from "./lessWatcher";
 // import * as path from "path";
 
 
-console.log("class watcher", LessWatcher);
 const lessMonitoringSystem = new LessWatcher();
 lessMonitoringSystem.getStartedLessMonitoring()
 .catch(err => console.log("err", err));
