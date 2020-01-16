@@ -20,6 +20,11 @@
     "allowUnreachableCode": false,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "strictBindCallApply": true
+    "strictBindCallApply": true,
+    "resolveJsonModule": true,
+    "lib": [
+      "es2019",
+      "DOM"
+    ]
   }
 }

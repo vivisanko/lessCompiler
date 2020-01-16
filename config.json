@@ -1,0 +1,9 @@
+{
+    "pathToLessc": "node_modules/less/bin/lessc",
+    "filePathMain": "../testProject/public/style.less",
+    "fileDirMain": "../testProject/public",
+    "additionalDirForCss": "../testProject/public/brands",
+    "nameForCss": "style.css",
+    "pathToTsc": "node_modules/typescript/bin/tsc",
+    "pathToTSConfig": "../testProject/tsconfig.json"
+}

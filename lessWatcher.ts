@@ -17,7 +17,8 @@ interface ILessWatcherOptions {
     readonly pathToLessc: string;
     readonly filePathMain: string;
     readonly fileDirMain: string;
-    readonly pathForCss: string;
+    readonly nameForCss: string;
+    readonly additionalDirForCss: string;
 }
 
 class MatchChecking implements IMatchChecking {
@@ -32,7 +33,8 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
     private readonly pathToLessc: string;
     private readonly filePathMain: string;
     private readonly fileDirMain: string;
-    private readonly pathForCss: string;
+    private readonly nameForCss: string;
+    private readonly additionalDirForCss: string;
 
     private readonly checkObservables = async (filePath: string, fileDir: string) => {
         this.allObservables.set(filePath, fileDir);
@@ -46,8 +48,10 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         return Promise.resolve(new Map([...observables, ...this.allObservables]));
     }
 
-    private rebuildLess () {
-        const cp = childProcess.spawn("node", [`${this.pathToLessc}`, `${this.filePathMain}`, `${this.pathForCss}`]);
+    private rebuildLess (filePathMain, pathForCss) {
+        console.log("pathForCss", pathForCss);
+
+        const cp = childProcess.spawn("node", [`${this.pathToLessc}`, `${filePathMain}`, `${pathForCss}`]);
         cp.stdout.on("data", data => {
             data && console.log(`Status less: ${ data.toString().trim() }`);
         });
@@ -80,20 +84,28 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         return localObservables;
     }
 
-    constructor (
-        config: ILessWatcherOptions
-    ) {
-        super();
-        this.pathToLessc = config.pathToLessc;
-        this.filePathMain = config.filePathMain;
-        this.fileDirMain = config.fileDirMain;
-        this.pathForCss = config.pathForCss;
-        {}
+    private additionalLessMonitoring() {
+        console.log("this.additionalDirForCss", this.additionalDirForCss);
+        this.additionalLess = fs.readdirSync(this.additionalDirForCss).flatMap(dirName => {
+            return fs.readdirSync(path.join(this.additionalDirForCss, dirName)).map(
+                    fileName => path.join(this.additionalDirForCss, dirName, fileName)
+                    ).filter(filePath => path.extname(filePath) === ".less");
+            });
+        console.log("this.additionalLess", this.additionalLess);
+        this.createAdditionalStyles();
     }
 
-   allObservables:  Map<string, string> = new Map();
+    private createAdditionalStyles() {
+        // here must be logic copy, paste, compile and insert in brand dir
+        // fs.copyFile(this.filePathMain, path.join(__dirname, "tmp/style.less"), (err) => {
+        //     if (err) { throw err; }
+        //     console.log("source.txt was copied to destination.txt");
+        // });
+        console.log("createAdditionalStyles");
 
-    getStartedLessMonitoring = async (filePathMatch: string = this.filePathMain, filePathDir: string = this.fileDirMain) => {
+    }
+
+    private readonly mainLessMonitoring = async (filePathMatch: string = this.filePathMain, filePathDir: string = this.fileDirMain) => {
 
         await this.checkObservables(filePathMatch, filePathDir)
             .catch(err => this.handleError(err))
@@ -106,8 +118,8 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
                             console.log(`${String(key)} file Changed`);
                             watcher.close();
                             this.allObservables.clear();
-                            this.rebuildLess();
-                            this.getStartedLessMonitoring()
+                            this.rebuildLess(this.filePathMain, path.join(this.fileDirMain, this.nameForCss));
+                            this.mainLessMonitoring()
                                 .catch(err => this.handleError(err));
                         });
                     });
@@ -115,5 +127,25 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
             })
             .catch(err => this.handleError(err));
     }
+
+    constructor (
+        config: ILessWatcherOptions
+    ) {
+        super();
+        this.pathToLessc = config.pathToLessc;
+        this.filePathMain = config.filePathMain;
+        this.fileDirMain = config.fileDirMain;
+        this.nameForCss = config.nameForCss;
+        this.additionalDirForCss = config.additionalDirForCss;
+        {}
+    }
+
+   allObservables:  Map<string, string> = new Map();
+   additionalLess: string [] = [];
+
+   getStartedLessMonitoring = async () => {
+    this.additionalLessMonitoring();
+    await this.mainLessMonitoring();
+   }
 
 }

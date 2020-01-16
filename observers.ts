@@ -1,20 +1,26 @@
 import { spawn } from "child_process";
 import { LessWatcher } from "./lessWatcher";
 import * as path from "path";
+import * as JSONConfig from "./config.json";
+
 
 const config = {
-    pathToLessc: path.join(__dirname, "node_modules", "less", "bin", "lessc"),
-    filePathMain: path.join(__dirname, "public", "style.less"),
-    fileDirMain: path.join(__dirname, "public"),
-    pathForCss: path.join("public", "style.css")
+    pathToLessc: path.join(__dirname, JSONConfig.pathToLessc),
+    filePathMain: path.join(__dirname, JSONConfig.filePathMain),
+    fileDirMain: path.join(__dirname, JSONConfig.fileDirMain),
+    nameForCss: JSONConfig.nameForCss,
+    additionalDirForCss: path.join(__dirname, JSONConfig.additionalDirForCss)
 };
+
+console.log("config", config);
+
 
 const lessMonitoringSystem = new LessWatcher(config);
     lessMonitoringSystem.getStartedLessMonitoring()
       .catch(err => console.log("err", err));
 
-const pathToTsc = path.join(__dirname, "node_modules", "typescript", "bin", "tsc");
-const pathToTSConfig =  path.join(__dirname, "tsconfig.json");
+const pathToTsc = path.join(__dirname, JSONConfig.pathToTsc);
+const pathToTSConfig =  path.join(__dirname, JSONConfig.pathToTSConfig);
 
 const ls = spawn("node", [`${pathToTsc}`, "-p", `${pathToTSConfig}`, "-w"]);
 
