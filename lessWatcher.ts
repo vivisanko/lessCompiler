@@ -4,10 +4,13 @@ import * as childProcess from "child_process";
 import { promisify } from "util";
 
 const readFile = promisify(fs.readFile);
-const DEFAULT_REGEXP =  /^@import ["'](.+[.less|.css]?)["'];$/gm;
 
 interface ILessWatcher {
     getStartedLessMonitoring(filePathMatch?: string, filePathDir?: string): Promise<void>;
+}
+
+interface IMatchChecking {
+    findMatches(content: string): string [] | null;
 }
 
 interface ILessWatcherOptions {
@@ -15,21 +18,27 @@ interface ILessWatcherOptions {
     readonly filePathMain: string;
     readonly fileDirMain: string;
     readonly pathForCss: string;
-    readonly regexp?: RegExp;
 }
 
-export class LessWatcher implements ILessWatcher {
-    private readonly pathToLessc;
-    private readonly filePathMain;
-    private readonly fileDirMain;
-    private readonly pathForCss;
-    private readonly regexp;
+class MatchChecking implements IMatchChecking {
+    private readonly regexp = /^@import ["'](.+[.less|.css]?)["'];$/gm;
+
+    findMatches(content: string) {
+       return content.match(this.regexp);
+    }
+}
+
+export class LessWatcher extends MatchChecking implements ILessWatcher {
+    private readonly pathToLessc: string;
+    private readonly filePathMain: string;
+    private readonly fileDirMain: string;
+    private readonly pathForCss: string;
 
     private readonly checkObservables = async (filePath: string, fileDir: string) => {
         this.allObservables.set(filePath, fileDir);
         let observables = new Map<string, string>();
         const content: string = await readFile(filePath, "utf-8");
-        const matches: string [] | null = content.match(this.regexp);
+        const matches: string [] | null = this.findMatches(content);
 
         if (matches) {
             observables = await this.processArray(matches, observables, fileDir);
@@ -74,18 +83,17 @@ export class LessWatcher implements ILessWatcher {
     constructor (
         config: ILessWatcherOptions
     ) {
+        super();
         this.pathToLessc = config.pathToLessc;
         this.filePathMain = config.filePathMain;
         this.fileDirMain = config.fileDirMain;
-        this.pathForCss = config.filePathMain;
-        this.regexp = config.regexp || DEFAULT_REGEXP;
+        this.pathForCss = config.pathForCss;
         {}
     }
 
    allObservables:  Map<string, string> = new Map();
 
     getStartedLessMonitoring = async (filePathMatch: string = this.filePathMain, filePathDir: string = this.fileDirMain) => {
-        console.log("this", this);
 
         await this.checkObservables(filePathMatch, filePathDir)
             .catch(err => this.handleError(err))
@@ -95,10 +103,10 @@ export class LessWatcher implements ILessWatcher {
                         console.log("path to observable", key);
 
                         const watcher =  fs.watch(key, (_curr, _prev) => {
-                            console.log(`${key} file Changed`);
-                            this.rebuildLess();
+                            console.log(`${String(key)} file Changed`);
                             watcher.close();
                             this.allObservables.clear();
+                            this.rebuildLess();
                             this.getStartedLessMonitoring()
                                 .catch(err => this.handleError(err));
                         });
