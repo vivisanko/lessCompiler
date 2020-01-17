@@ -9,6 +9,7 @@ const config = {
     filePathMain: path.join(__dirname, JSONConfig.filePathMain),
     fileDirMain: path.join(__dirname, JSONConfig.fileDirMain),
     nameForCss: JSONConfig.nameForCss,
+    pathToVariables: path.join(__dirname, JSONConfig.pathToVariables),
     additionalDirForCss: path.join(__dirname, JSONConfig.additionalDirForCss)
 };
 
@@ -16,6 +17,8 @@ console.log("config", config);
 
 
 const lessMonitoringSystem = new LessWatcher(config);
+    lessMonitoringSystem.createAdditionalStyles();
+    lessMonitoringSystem.rebuildLess();
     lessMonitoringSystem.getStartedLessMonitoring()
       .catch(err => console.log("err", err));
 

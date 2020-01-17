@@ -4,6 +4,7 @@ import * as childProcess from "child_process";
 import { promisify } from "util";
 
 const readFile = promisify(fs.readFile);
+const writeFile = promisify(fs.writeFile);
 
 interface ILessWatcher {
     getStartedLessMonitoring(filePathMatch?: string, filePathDir?: string): Promise<void>;
@@ -19,6 +20,7 @@ interface ILessWatcherOptions {
     readonly fileDirMain: string;
     readonly nameForCss: string;
     readonly additionalDirForCss: string;
+    readonly pathToVariables: string;
 }
 
 class MatchChecking implements IMatchChecking {
@@ -35,6 +37,7 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
     private readonly fileDirMain: string;
     private readonly nameForCss: string;
     private readonly additionalDirForCss: string;
+    private readonly pathToVariables: string;
 
     private readonly checkObservables = async (filePath: string, fileDir: string) => {
         this.allObservables.set(filePath, fileDir);
@@ -48,24 +51,13 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         return Promise.resolve(new Map([...observables, ...this.allObservables]));
     }
 
-    private rebuildLess (filePathMain, pathForCss) {
-        console.log("pathForCss", pathForCss);
-
-        const cp = childProcess.spawn("node", [`${this.pathToLessc}`, `${filePathMain}`, `${pathForCss}`]);
-        cp.stdout.on("data", data => {
-            data && console.log(`Status less: ${ data.toString().trim() }`);
-        });
-        cp.stderr.on("data", data => {
-            console.log(`Error less: ${ data }`);
-        });
-        cp.on("close", code => {
-            console.log(`Closed less with code: ${ code }`);
-        });
-    }
-
     private readonly handleError = (err) => {
         throw err;
     }
+
+    // private readonly fillObservable = () => {
+    //     this.additionalLess.forEach((observable => this.mainLessMonitoring(observable, path.parse(observable).dir)));
+    // }
 
     private async processArray(arrayMatches: string [], observables: Map<string, string>, fileDir: string) {
 
@@ -84,29 +76,33 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         return localObservables;
     }
 
-    private additionalLessMonitoring() {
-        console.log("this.additionalDirForCss", this.additionalDirForCss);
-        this.additionalLess = fs.readdirSync(this.additionalDirForCss).flatMap(dirName => {
-            return fs.readdirSync(path.join(this.additionalDirForCss, dirName)).map(
-                    fileName => path.join(this.additionalDirForCss, dirName, fileName)
-                    ).filter(filePath => path.extname(filePath) === ".less");
-            });
-        console.log("this.additionalLess", this.additionalLess);
-        this.createAdditionalStyles();
-    }
+    private async compileAdditionalStyles() {
 
-    private createAdditionalStyles() {
         // here must be logic copy, paste, compile and insert in brand dir
-        // fs.copyFile(this.filePathMain, path.join(__dirname, "tmp/style.less"), (err) => {
-        //     if (err) { throw err; }
-        //     console.log("source.txt was copied to destination.txt");
-        // });
-        console.log("createAdditionalStyles");
+        const tempPath = path.join(__dirname, "tmp/variables.less");
+        console.log("tempPath", tempPath);
+
+
+        fs.copyFileSync(this.pathToVariables, tempPath);
+
+        for (const additionalVariablePath of this.additionalLess) {
+            const content = await readFile(tempPath, "utf-8");
+            this.rebuildLess(this.filePathMain, path.join(path.parse(additionalVariablePath).dir, this.nameForCss));
+            console.log("compiled");
+            console.log("content", content);
+
+            await writeFile(this.pathToVariables, content);
+        }
+
+
+        fs.unlink(path.join(__dirname, "tmp/variables.less"), (err) => {
+            if (err) { throw err; }
+            console.log("tmp/variables.less was deleted");
+        });
 
     }
 
     private readonly mainLessMonitoring = async (filePathMatch: string = this.filePathMain, filePathDir: string = this.fileDirMain) => {
-
         await this.checkObservables(filePathMatch, filePathDir)
             .catch(err => this.handleError(err))
             .then((observables) => {
@@ -137,14 +133,42 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         this.fileDirMain = config.fileDirMain;
         this.nameForCss = config.nameForCss;
         this.additionalDirForCss = config.additionalDirForCss;
+        this.pathToVariables = config.pathToVariables;
         {}
     }
 
    allObservables:  Map<string, string> = new Map();
    additionalLess: string [] = [];
 
+   rebuildLess (filePathMain = this.filePathMain, pathForCss = path.join(this.fileDirMain, this.nameForCss)) {
+        console.log ("pathForCss", pathForCss);
+
+        const cp = childProcess.spawn("node", [`${this.pathToLessc}`, `${filePathMain}`, `${pathForCss}`]);
+        cp.stdout.on("data", data => {
+            data && console.log(`Status less: ${ data.toString().trim() }`);
+        });
+        cp.stderr.on("data", data => {
+            console.log(`Error less: ${ data }`);
+        });
+        cp.on("close", code => {
+            console.log(`Closed less with code: ${ code }`);
+        });
+    }
+
+   createAdditionalStyles() {
+
+        console.log("this.additionalDirForCss", this.additionalDirForCss);
+        this.additionalLess = fs.readdirSync(this.additionalDirForCss).flatMap(dirName => {
+            return fs.readdirSync(path.join(this.additionalDirForCss, dirName)).map(
+                    fileName => path.join(this.additionalDirForCss, dirName, fileName)
+                    ).filter(filePath => path.extname(filePath) === ".less");
+            });
+        console.log("this.additionalLess", this.additionalLess);
+
+        this.compileAdditionalStyles();
+    }
+
    getStartedLessMonitoring = async () => {
-    this.additionalLessMonitoring();
     await this.mainLessMonitoring();
    }
 
