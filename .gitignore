@@ -1,5 +1,4 @@
 node_modules
-tmp
 **/*.css
 *.js
 !index.js

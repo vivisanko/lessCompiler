@@ -13,14 +13,8 @@ const config = {
     additionalDirForCss: path.join(__dirname, JSONConfig.additionalDirForCss)
 };
 
-console.log("config", config);
-
-
 const lessMonitoringSystem = new LessWatcher(config);
-    lessMonitoringSystem.createAdditionalStyles();
-    lessMonitoringSystem.rebuildLess();
-    lessMonitoringSystem.getStartedLessMonitoring()
-      .catch(err => console.log("err", err));
+   lessMonitoringSystem.getStartedLessMonitoring()
 
 const pathToTsc = path.join(__dirname, JSONConfig.pathToTsc);
 const pathToTSConfig =  path.join(__dirname, JSONConfig.pathToTSConfig);
