@@ -5,6 +5,9 @@
   "exclude": [
     "node_modules"
   ],
+  "rules": {
+        "await-promise":  [true, "Thenable"]
+    },
   "compileOnSave": true,
   "compilerOptions": {
     "target": "es6",
@@ -22,8 +25,10 @@
     "noUnusedParameters": true,
     "strictBindCallApply": true,
     "resolveJsonModule": true,
+    
     "lib": [
       "es2019",
+      "esnext.asynciterable",
       "DOM"
     ]
   }

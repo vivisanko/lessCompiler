@@ -15,6 +15,7 @@ const config = {
 
 const lessMonitoringSystem = new LessWatcher(config);
    lessMonitoringSystem.getStartedLessMonitoring()
+   .catch(err => {throw err; });
 
 const pathToTsc = path.join(__dirname, JSONConfig.pathToTsc);
 const pathToTSConfig =  path.join(__dirname, JSONConfig.pathToTSConfig);

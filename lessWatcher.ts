@@ -47,7 +47,7 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         let observables = new Map<string, string>();
         const content: string = await readFile(filePath, "utf-8");
         const matches: string [] | null = this.findMatches(content);
-        
+
         if (matches) {
             observables = await this.processArray(matches, observables, fileDir);
         }
@@ -55,9 +55,9 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
     }
 
     private fillObservable () {
-        this.additionalLess.forEach(additional=>{
-            this.allObservables.set(additional, path.parse(additional).dir)
-        })
+        this.additionalLess.forEach(additional => {
+            this.allObservables.set(additional, path.parse(additional).dir);
+        });
     }
 
     private async processArray(arrayMatches: string [], observables: Map<string, string>, fileDir: string) {
@@ -82,17 +82,18 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         }
     }
 
-    private async transformVariablesAndCompile (additionalVariablePath) {
-        const addingContent = `\n@import '${path.relative(path.parse(this.pathToVariables).dir, additionalVariablePath).split(path.sep).join('/')}';`;
-        
-        await appendFile(this.pathToVariables, addingContent, {flag: 'a'});                               
+    private async transformVariablesAndCompile (additionalVariablePath: string) {
+        const addingContent = `\n@import '${path.relative(path.parse(this.pathToVariables).dir, additionalVariablePath).split(path.sep).join("/")}';`;
+
+        await appendFile(this.pathToVariables, addingContent, {flag: "a"});
         this.rebuildLess(this.filePathMain, path.join(path.parse(additionalVariablePath).dir, this.nameForCss));
     }
 
     private async compileAdditionalStyles() {
         await copyFile(this.pathToVariables, this.tempPath);
-        const content = await readFile(this.tempPath, {encoding:"utf8"});
+        const content = await readFile(this.tempPath, {encoding: "utf8"});
 
+        // tslint:disable-next-line: await-promise
         for await (const additionalVariablePath of this.additionalLess) {
             await this.transformVariablesAndCompile(additionalVariablePath);
             await writeFile(this.pathToVariables, content);
@@ -100,25 +101,26 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         this.deleteTemporaryDir();
     }
 
-    private createChangeListener (observables: Map <string,string>) {
+    private createChangeListener (observables: Map <string, string>) {
         const changesEmitter = new EventEmitter();
         let countChanges = 0;
-        
+
         let watchers = Array.from(observables.keys()).map(key => {
             return fs.watch(key, (_eType, _fileName) => {
-                if(_eType==="change" && _fileName===path.parse(key).base){
-                    changesEmitter.emit('changes');
+                if (_eType === "change" && _fileName === path.parse(key).base) {
+                    changesEmitter.emit("changes");
                 }
             });
         });
 
-        changesEmitter.on('changes', () => {
+        changesEmitter.on("changes", () => {
             countChanges++;
             if (countChanges > 1) {
                 watchers.forEach(watcher => watcher.close());
                 watchers = [];
                 this.allObservables.clear();
-                this.getStartedLessMonitoring();
+                this.getStartedLessMonitoring()
+                .catch(err => {throw err; });
             }
         });
     }
@@ -127,10 +129,10 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         const observables = await this.checkObservables(filePathMatch, filePathDir);
         if (observables) {
             this.createChangeListener(observables);
-        }      
+        }
     }
 
-    private async rebuildLess (filePathMain = this.filePathMain, pathForCss = path.join(this.fileDirMain, this.nameForCss)) {
+    private rebuildLess (filePathMain = this.filePathMain, pathForCss = path.join(this.fileDirMain, this.nameForCss)) {
         childProcess.spawnSync("node", [`${this.pathToLessc}`, `${filePathMain}`, `${pathForCss}`]);
     }
 
@@ -161,8 +163,8 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
     tempPath = path.join(__dirname, "tmp/variables.less");
 
     async getStartedLessMonitoring () {
-    this.rebuildLess();    
-    if(this.additionalDirForCss){
+    this.rebuildLess();
+    if (this.additionalDirForCss) {
         await this.createAdditionalStyles();
         this.fillObservable();
     }
