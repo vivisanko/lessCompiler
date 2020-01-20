@@ -1,10 +1,14 @@
 {
-    "pathToLessc": "node_modules/less/bin/lessc",
-    "filePathMain": "../testProject/public/style.less",
-    "fileDirMain": "../testProject/public",
-    "pathToVariables": "../testProject/public/customization/variablesLibrary.less",
-    "additionalDirForCss": "../testProject/public/brands",
-    "nameForCss": "style.css",
-    "pathToTsc": "node_modules/typescript/bin/tsc",
-    "pathToTSConfig": "../testProject/tsconfig.json"
+    "lessCompiler": {
+        "pathToLessc": "node_modules/less/bin/lessc",
+        "filePathToMainLess": "../testProject/public/style.less",
+        "fileDirMain": "../testProject/public",
+        "pathToVariables": "../testProject/public/customization/variablesLibrary.less",
+        "additionalDirForCss": "../testProject/public/brands",
+        "nameForCss": "style.css"
+    },
+    "tscCompiler": {
+        "pathToTsc": "node_modules/typescript/bin/tsc",
+        "pathToTSConfig": "../testProject/tsconfig.json"
+    }
 }

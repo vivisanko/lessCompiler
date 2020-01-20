@@ -3,22 +3,23 @@ import { LessWatcher } from "./lessWatcher";
 import * as path from "path";
 import * as JSONConfig from "./config.json";
 
+const {lessCompiler, tscCompiler} = JSONConfig;
 
 const config = {
-    pathToLessc: path.join(__dirname, JSONConfig.pathToLessc),
-    filePathMain: path.join(__dirname, JSONConfig.filePathMain),
-    fileDirMain: path.join(__dirname, JSONConfig.fileDirMain),
-    nameForCss: JSONConfig.nameForCss,
-    pathToVariables: path.join(__dirname, JSONConfig.pathToVariables),
-    additionalDirForCss: path.join(__dirname, JSONConfig.additionalDirForCss)
+    pathToLessc: path.join(__dirname, lessCompiler.pathToLessc),
+    filePathMain: path.join(__dirname, lessCompiler.filePathToMainLess),
+    fileDirMain: path.join(__dirname, lessCompiler.fileDirMain),
+    nameForCss: lessCompiler.nameForCss,
+    pathToVariables: path.join(__dirname, lessCompiler.pathToVariables),
+    additionalDirForCss: path.join(__dirname, lessCompiler.additionalDirForCss)
 };
 
 const lessMonitoringSystem = new LessWatcher(config);
    lessMonitoringSystem.getStartedLessMonitoring()
    .catch(err => {throw err; });
 
-const pathToTsc = path.join(__dirname, JSONConfig.pathToTsc);
-const pathToTSConfig =  path.join(__dirname, JSONConfig.pathToTSConfig);
+const pathToTsc = path.join(__dirname, tscCompiler.pathToTsc);
+const pathToTSConfig =  path.join(__dirname, tscCompiler.pathToTSConfig);
 
 const ls = spawn("node", [`${pathToTsc}`, "-p", `${pathToTSConfig}`, "-w"]);
 

@@ -5,9 +5,6 @@
   "exclude": [
     "node_modules"
   ],
-  "rules": {
-        "await-promise":  [true, "Thenable"]
-    },
   "compileOnSave": true,
   "compilerOptions": {
     "target": "es6",
