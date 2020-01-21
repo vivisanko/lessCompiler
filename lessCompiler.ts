@@ -14,9 +14,11 @@ const config = {
 };
 
 const compilerLess = new LessWatcher(config);
-    console.clear();
+    compilerLess.startLogger();
     compilerLess.rebuildLess()
-    .catch(err => {throw err; });
+    .catch(err => {console.log("err", err);
+     });
+    compilerLess.checkErrors();
 if (config.pathToVariables) {
     compilerLess.createAdditionalStyles()
     .catch(err => {throw err; });

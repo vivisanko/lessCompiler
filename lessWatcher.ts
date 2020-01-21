@@ -3,6 +3,9 @@ import * as path from "path";
 import * as childProcess from "child_process";
 import { promisify } from "util";
 import * as EventEmitter from "events";
+import { Console } from "console";
+// import * as util from "util";
+// import { Console } from "inspector";
 
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
@@ -117,7 +120,7 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
             await stat(transformedPath.replace(/.less$/, ".css"));
             return transformedPath.replace(/.less$/, ".css");
         } catch (_err) {}
-        console.log("path not found", path.join(fileDir, match));
+        this.logger.log("path not found", path.join(fileDir, match));
         return "";
     }
 
@@ -133,6 +136,7 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         });
 
         changesEmitter.on("changes", () => {
+            debugger;
             countChanges++;
             if (countChanges > 1) {
                 watchers.forEach(watcher => watcher.close());
@@ -166,26 +170,46 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
     allObservables:  Map<string, string> = new Map();
     additionalLess: string [] = [];
     tempPath = path.join(__dirname, "tmp/variables.less");
+    logger: Console = new Console({ stdout: process.stdout, stderr: process.stderr });
+    errors = new Map();
+
+    checkErrors() {
+        this.errors.forEach((_value, key) => {
+            this.logger.log(`${key}`);
+        });
+    }
+
+    startLogger = () => {
+        this.logger.clear();
+        this.errors.clear();
+        this.logger = new Console({ stdout: process.stdout, stderr: process.stderr });
+
+    }
 
     rebuildLess (filePathMain = this.filePathMain, pathForCss = path.join(this.fileDirMain, this.nameForCss)) {
+        let isWithoutError = true;
         return new Promise((res, rej) => {
             const cp = childProcess.spawn("node", [`${this.pathToLessc}`, `${filePathMain}`, `${pathForCss}`]);
             cp.stdout.on("data", data => {
-                data && console.log(`Status: ${ data.toString().trim() }`);
+                data && this.logger.log(`Status: ${ data.toString().trim() }`);
             });
 
             cp.stderr.on("data", data => {
-                console.log(`Error: ${ data }`);
+                const err = new Error(data);
+                this.errors.set(`${err.message}`, err);
+                isWithoutError = false;
+                this.logger.log(`${pathForCss} compile with error`);
             });
 
             cp.on("error", data => {
-                console.log(`Error: ${ String(data) }`);
-                console.log(`${pathForCss} not compile`);
+                this.logger.log(`Error: ${ String(data) }`);
+
+                this.logger.log(`${pathForCss} not compile`);
                 rej();
             });
 
             cp.on("close", () => {
-                console.log(`${pathForCss} was compiled`);
+                isWithoutError && this.logger.log(`${pathForCss} was compiled`);
                 res();
             });
 
@@ -206,13 +230,14 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
     }
 
     async getStartedLessMonitoring () {
-        console.clear();
+        this.startLogger();
         await this.rebuildLess();
+
         if (this.additionalDirForCss) {
             await this.createAdditionalStyles();
             this.fillObservable();
         }
-
+        this.checkErrors();
         await this.mainLessMonitoring();
     }
 
