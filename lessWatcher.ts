@@ -82,9 +82,7 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
                 } else {
                     await unlink(this.tempPath);
                 }
-            } catch (err) {
-                console.error(err);
-            }
+            } catch (_err) {}
     }
 
     private async transformVariablesAndCompile (additionalVariablePath: string) {
@@ -114,15 +112,12 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         try {
             await stat(transformedPath);
             return transformedPath;
-        } catch (err) {
-            console.error(err);
-        }
+        } catch (_err) {}
         try {
             await stat(transformedPath.replace(/.less$/, ".css"));
             return transformedPath.replace(/.less$/, ".css");
-        } catch (err) {
-            console.error(err);
-        }
+        } catch (_err) {}
+        console.log("path not found", path.join(fileDir, match));
         return "";
     }
 
@@ -156,42 +151,6 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         }
     }
 
-    private rebuildLess (filePathMain = this.filePathMain, pathForCss = path.join(this.fileDirMain, this.nameForCss)) {
-        return new Promise((res, rej) => {
-            const cp = childProcess.spawn("node", [`${this.pathToLessc}`, `${filePathMain}`, `${pathForCss}`]);
-            cp.stdout.on("data", data => {
-                data && console.log(`Status: ${ data.toString().trim() }`);
-            });
-
-            cp.stderr.on("data", data => {
-                console.log(`Error: ${ data }`);
-            });
-
-            cp.on("error", data => {
-                console.log(`Error: ${ String(data) }`);
-                rej();
-            });
-
-            cp.on("close", () => {
-                res();
-            });
-
-        });
-    }
-
-    private async createAdditionalStyles() {
-        const childDirs = await readdir(this.additionalDirForCss);
-        let allLess: string [] = [];
-        for (const dirName of childDirs) {
-            const grandChildDirs = await readdir(path.join(this.additionalDirForCss, dirName));
-            const result = grandChildDirs.map(fileName => path.join(this.additionalDirForCss, dirName, fileName))
-                                         .filter(filePath => path.extname(filePath) === ".less");
-           allLess = allLess.concat(result);
-        }
-        this.additionalLess = allLess;
-        await this.compileAdditionalStyles();
-    }
-
     constructor (
         config: ILessWatcherOptions
     ) {
@@ -208,7 +167,46 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
     additionalLess: string [] = [];
     tempPath = path.join(__dirname, "tmp/variables.less");
 
+    rebuildLess (filePathMain = this.filePathMain, pathForCss = path.join(this.fileDirMain, this.nameForCss)) {
+        return new Promise((res, rej) => {
+            const cp = childProcess.spawn("node", [`${this.pathToLessc}`, `${filePathMain}`, `${pathForCss}`]);
+            cp.stdout.on("data", data => {
+                data && console.log(`Status: ${ data.toString().trim() }`);
+            });
+
+            cp.stderr.on("data", data => {
+                console.log(`Error: ${ data }`);
+            });
+
+            cp.on("error", data => {
+                console.log(`Error: ${ String(data) }`);
+                console.log(`${pathForCss} not compile`);
+                rej();
+            });
+
+            cp.on("close", () => {
+                console.log(`${pathForCss} was compiled`);
+                res();
+            });
+
+        });
+    }
+
+    async createAdditionalStyles() {
+        const childDirs = await readdir(this.additionalDirForCss);
+        let allLess: string [] = [];
+        for (const dirName of childDirs) {
+            const grandChildDirs = await readdir(path.join(this.additionalDirForCss, dirName));
+            const result = grandChildDirs.map(fileName => path.join(this.additionalDirForCss, dirName, fileName))
+                                         .filter(filePath => path.extname(filePath) === ".less");
+            allLess = allLess.concat(result);
+        }
+        this.additionalLess = allLess;
+        await this.compileAdditionalStyles();
+    }
+
     async getStartedLessMonitoring () {
+        console.clear();
         await this.rebuildLess();
         if (this.additionalDirForCss) {
             await this.createAdditionalStyles();
