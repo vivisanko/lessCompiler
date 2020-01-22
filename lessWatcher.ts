@@ -4,8 +4,6 @@ import * as childProcess from "child_process";
 import { promisify } from "util";
 import * as EventEmitter from "events";
 import { Console } from "console";
-// import * as util from "util";
-// import { Console } from "inspector";
 
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
@@ -119,14 +117,16 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         try {
             await stat(transformedPath.replace(/.less$/, ".css"));
             return transformedPath.replace(/.less$/, ".css");
-        } catch (_err) {}
-        this.logger.log("path not found", path.join(fileDir, match));
+        } catch (_err) {
+            const err = new Error(_err);
+            this.errors.set(`${err.message}`, err);
+
+        }
         return "";
     }
 
     private createChangeListener (observables: Map <string, string>) {
         const changesEmitter = new EventEmitter();
-        let countChanges = 0;
         let watchers = Array.from(observables.keys()).map(key => {
             return fs.watch(key, (_eType, _fileName) => {
                 if (_eType === "change" && _fileName === path.parse(key).base) {
@@ -136,15 +136,11 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         });
 
         changesEmitter.on("changes", () => {
-            debugger;
-            countChanges++;
-            if (countChanges > 1) {
                 watchers.forEach(watcher => watcher.close());
                 watchers = [];
                 this.allObservables.clear();
                 this.getStartedLessMonitoring()
                 .catch(err => {throw err; });
-            }
         });
     }
 
@@ -175,7 +171,7 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
 
     checkErrors() {
         this.errors.forEach((_value, key) => {
-            this.logger.log(`${key}`);
+            this.logger.log(`${String(key)}`);
         });
     }
 
@@ -198,21 +194,19 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
                 const err = new Error(data);
                 this.errors.set(`${err.message}`, err);
                 isWithoutError = false;
-                this.logger.log(`${pathForCss} compile with error`);
+                this.logger.log(`${pathForCss} with error. Сompilation failed`);
             });
 
             cp.on("error", data => {
                 this.logger.log(`Error: ${ String(data) }`);
-
                 this.logger.log(`${pathForCss} not compile`);
                 rej();
             });
 
             cp.on("close", () => {
-                isWithoutError && this.logger.log(`${pathForCss} was compiled`);
+                isWithoutError && this.logger.log(`${pathForCss} was successfully compiled`);
                 res();
             });
-
         });
     }
 
@@ -230,15 +224,26 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
     }
 
     async getStartedLessMonitoring () {
+
         this.startLogger();
         await this.rebuildLess();
 
+        if (this.errors.size > 0) {
+            this.checkErrors();
+            return;
+        }
+
         if (this.additionalDirForCss) {
             await this.createAdditionalStyles();
-            this.fillObservable();
+                this.fillObservable();
+            }
+
+        if (this.errors.size > 0) {
+            this.checkErrors();
+            return;
         }
-        this.checkErrors();
         await this.mainLessMonitoring();
+
     }
 
 }

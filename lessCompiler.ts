@@ -16,10 +16,11 @@ const config = {
 const compilerLess = new LessWatcher(config);
     compilerLess.startLogger();
     compilerLess.rebuildLess()
-    .catch(err => {console.log("err", err);
-     });
-    compilerLess.checkErrors();
+    .then(() => compilerLess.checkErrors())
+    .catch(err => {throw err; });
+
 if (config.pathToVariables) {
     compilerLess.createAdditionalStyles()
+    .then(() => compilerLess.checkErrors())
     .catch(err => {throw err; });
 }
