@@ -6,11 +6,11 @@ import * as EventEmitter from "events";
 import { Console } from "console";
 
 const readFile = promisify(fs.readFile);
-const writeFile = promisify(fs.writeFile);
-const appendFile = promisify(fs.appendFile);
-const copyFile = promisify(fs.copyFile);
-const unlink = promisify(fs.unlink);
-const mkdir = promisify(fs.mkdir);
+// const writeFile = promisify(fs.writeFile);
+// const appendFile = promisify(fs.appendFile);
+// const copyFile = promisify(fs.copyFile);
+// const unlink = promisify(fs.unlink);
+// const mkdir = promisify(fs.mkdir);
 const stat = promisify(fs.stat);
 const readdir = promisify(fs.readdir);
 
@@ -45,7 +45,7 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
     private readonly fileDirMain: string;
     private readonly nameForCss: string;
     private readonly additionalDirForCss: string;
-    private readonly pathToVariables: string;
+    // private readonly pathToVariables: string;
 
     private readonly checkObservables = async (filePath: string, fileDir: string) => {
         this.allObservables.set(filePath, fileDir);
@@ -76,33 +76,33 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         return localObservables;
     }
 
-   private async processingTemporaryDir (isProcessCreate: boolean) {
-        try {
-                if (isProcessCreate) {
-                    await mkdir(path.parse(this.tempPath).dir);
-                } else {
-                    await unlink(this.tempPath);
-                }
-            } catch (_err) {}
-    }
+//    private async processingTemporaryDir (isProcessCreate: boolean) {
+//         try {
+//                 if (isProcessCreate) {
+//                     await mkdir(path.parse(this.tempPath).dir);
+//                 } else {
+//                     await unlink(this.tempPath);
+//                 }
+//             } catch (_err) {}
+//     }
 
     private async transformVariablesAndCompile (additionalVariablePath: string) {
-        const addingContent = `\n@import '${path.relative(path.parse(this.pathToVariables).dir, additionalVariablePath).split(path.sep).join("/")}';`;
+        // const addingContent = `\n@import '${path.relative(path.parse(this.pathToVariables).dir, additionalVariablePath).split(path.sep).join("/")}';`;
 
-        await appendFile(this.pathToVariables, addingContent, {flag: "a"});
+        // await appendFile(this.pathToVariables, addingContent, {flag: "a"});
         await this.rebuildLess(this.filePathMain, path.join(path.parse(additionalVariablePath).dir, this.nameForCss));
     }
 
     private async compileAdditionalStyles() {
-        await this.processingTemporaryDir(true);
-        await copyFile(this.pathToVariables, this.tempPath);
-        const content = await readFile(this.tempPath, {encoding: "utf8"});
+        // await this.processingTemporaryDir(true);
+        // await copyFile(this.pathToVariables, this.tempPath);
+        // const content = await readFile(this.tempPath, {encoding: "utf8"});
 
         for (const additionalVariablePath of this.additionalLess) {
             await this.transformVariablesAndCompile(additionalVariablePath);
-            await writeFile(this.pathToVariables, content);
+            // await writeFile(this.pathToVariables, content);
         }
-        await this.processingTemporaryDir(false);
+        // await this.processingTemporaryDir(false);
     }
 
     private async transformPath(fileDir, match) {
@@ -119,7 +119,7 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
             return transformedPath.replace(/.less$/, ".css");
         } catch (_err) {
             const err = new Error(_err);
-            this.errors.set(`${err.message}`, err);
+            this.errors.add(`${err.message}`);
 
         }
         return "";
@@ -160,18 +160,18 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         this.fileDirMain = config.fileDirMain;
         this.nameForCss = config.nameForCss;
         this.additionalDirForCss = config.additionalDirForCss;
-        this.pathToVariables = config.pathToVariables;
+        // this.pathToVariables = config.pathToVariables;
     }
 
     allObservables:  Map<string, string> = new Map();
     additionalLess: string [] = [];
     tempPath = path.join(__dirname, "tmp/variables.less");
     logger: Console = new Console({ stdout: process.stdout, stderr: process.stderr });
-    errors = new Map();
+    errors: Set <string> = new Set();
 
     checkErrors() {
-        this.errors.forEach((_value, key) => {
-            this.logger.log(`${String(key)}`);
+        this.errors.forEach((value) => {
+            this.logger.log(`${String(value)}`);
         });
     }
 
@@ -183,16 +183,22 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
     }
 
     rebuildLess (filePathMain = this.filePathMain, pathForCss = path.join(this.fileDirMain, this.nameForCss)) {
+        const theme = path.parse(pathForCss).dir.split(path.sep).pop() || "";
+        this.logger.log("theme", theme);
+
         let isWithoutError = true;
+        const staticUrl = `../brands/${theme}`;
+        this.logger.log("staticUrl", staticUrl);
+
         return new Promise((res, rej) => {
-            const cp = childProcess.spawn("node", [`${this.pathToLessc}`, `${filePathMain}`, `${pathForCss}`]);
+            const cp = childProcess.spawn("node", [`${this.pathToLessc}`, `--modify-var=@theme="${staticUrl}"`, `${filePathMain}`, `${pathForCss}`]);
             cp.stdout.on("data", data => {
                 data && this.logger.log(`Status: ${ data.toString().trim() }`);
             });
 
             cp.stderr.on("data", data => {
                 const err = new Error(data);
-                this.errors.set(`${err.message}`, err);
+                this.errors.add(`${err.message}`);
                 isWithoutError = false;
                 this.logger.log(`${pathForCss} with error. Сompilation failed`);
             });
@@ -226,23 +232,27 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
     async getStartedLessMonitoring () {
 
         this.startLogger();
-        await this.rebuildLess();
 
-        if (this.errors.size > 0) {
-            this.checkErrors();
-            return;
-        }
+        // await this.rebuildLess();
+
+        // if (this.errors.size > 0) {
+        //     this.checkErrors();
+        //     return;
+        // }
 
         if (this.additionalDirForCss) {
             await this.createAdditionalStyles();
                 this.fillObservable();
             }
 
-        if (this.errors.size > 0) {
-            this.checkErrors();
-            return;
+        if (2 < 5) {
+            if (this.errors.size > 0) {
+                this.checkErrors();
+                return;
+            }
+            await this.mainLessMonitoring();
         }
-        await this.mainLessMonitoring();
+
 
     }
 
