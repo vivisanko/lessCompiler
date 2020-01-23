@@ -169,7 +169,7 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
 
            if (controller) {
                controller.on("abort", () => {
-                cp.stdin.end();
+                cp.kill("SIGTERM");
                 isWithoutError = false;
                 res(false);
             });
