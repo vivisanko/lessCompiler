@@ -32,7 +32,7 @@ interface ILessWatcherOptions {
 }
 
 class MatchChecking implements IMatchChecking {
-    private readonly regexp = /^@import ["'](.+[.less|.css]?)["'];$/gm;
+    private readonly regexp = /^@import ["'][^@{theme}](.+[.less|.css]?)["'];$/gm;
 
     findMatches(content: string) {
        return content.match(this.regexp);
@@ -45,7 +45,7 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
     private readonly fileDirMain: string;
     private readonly nameForCss: string;
     private readonly additionalDirForCss: string;
-    // private readonly pathToVariables: string;
+    private readonly pathToVariables: string;
 
     private readonly checkObservables = async (filePath: string, fileDir: string) => {
         this.allObservables.set(filePath, fileDir);
@@ -76,33 +76,12 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         return localObservables;
     }
 
-//    private async processingTemporaryDir (isProcessCreate: boolean) {
-//         try {
-//                 if (isProcessCreate) {
-//                     await mkdir(path.parse(this.tempPath).dir);
-//                 } else {
-//                     await unlink(this.tempPath);
-//                 }
-//             } catch (_err) {}
-//     }
-
-    private async transformVariablesAndCompile (additionalVariablePath: string) {
-        // const addingContent = `\n@import '${path.relative(path.parse(this.pathToVariables).dir, additionalVariablePath).split(path.sep).join("/")}';`;
-
-        // await appendFile(this.pathToVariables, addingContent, {flag: "a"});
-        await this.rebuildLess(this.filePathMain, path.join(path.parse(additionalVariablePath).dir, this.nameForCss));
-    }
-
     private async compileAdditionalStyles() {
-        // await this.processingTemporaryDir(true);
-        // await copyFile(this.pathToVariables, this.tempPath);
-        // const content = await readFile(this.tempPath, {encoding: "utf8"});
+        let controller = new EventEmitter();
+        const promises = this.additionalLess.map(additionalPath => this.rebuildLess(this.filePathMain, path.parse(additionalPath).dir, controller));
 
-        for (const additionalVariablePath of this.additionalLess) {
-            await this.transformVariablesAndCompile(additionalVariablePath);
-            // await writeFile(this.pathToVariables, content);
-        }
-        // await this.processingTemporaryDir(false);
+        await Promise.all(promises);
+        this.checkErrors();
     }
 
     private async transformPath(fileDir, match) {
@@ -160,7 +139,7 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
         this.fileDirMain = config.fileDirMain;
         this.nameForCss = config.nameForCss;
         this.additionalDirForCss = config.additionalDirForCss;
-        // this.pathToVariables = config.pathToVariables;
+        this.pathToVariables = config.pathToVariables;
     }
 
     allObservables:  Map<string, string> = new Map();
@@ -182,16 +161,20 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
 
     }
 
-    rebuildLess (filePathMain = this.filePathMain, pathForCss = path.join(this.fileDirMain, this.nameForCss)) {
-        const theme = path.parse(pathForCss).dir.split(path.sep).pop() || "";
-        this.logger.log("theme", theme);
-
+    rebuildLess (filePathMain = this.filePathMain, dirForCss = this.fileDirMain, controller: EventEmitter | undefined = undefined) {
         let isWithoutError = true;
-        const staticUrl = `../brands/${theme}`;
-        this.logger.log("staticUrl", staticUrl);
-
+        const theme = dirForCss === this.fileDirMain ? "./" : path.join(path.relative(path.parse(this.pathToVariables).dir, this.additionalDirForCss), dirForCss.split(path.sep).pop() || "");
         return new Promise((res, rej) => {
-            const cp = childProcess.spawn("node", [`${this.pathToLessc}`, `--modify-var=@theme="${staticUrl}"`, `${filePathMain}`, `${pathForCss}`]);
+           const cp = childProcess.spawn("node", [`${this.pathToLessc}`, `--modify-var=@theme="${theme}"`, `${filePathMain}`, `${path.join(dirForCss, this.nameForCss)}`]);
+
+           if (controller) {
+               controller.on("abort", () => {
+                cp.stdin.end();
+                isWithoutError = false;
+                res(false);
+            });
+
+           }
             cp.stdout.on("data", data => {
                 data && this.logger.log(`Status: ${ data.toString().trim() }`);
             });
@@ -200,23 +183,32 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
                 const err = new Error(data);
                 this.errors.add(`${err.message}`);
                 isWithoutError = false;
-                this.logger.log(`${pathForCss} with error. Сompilation failed`);
+                this.logger.log(`${path.join(dirForCss, this.nameForCss)} with error. Сompilation failed`);
+                if (controller) {
+                    controller.emit("abort");
+                }
+                res(false);
             });
 
             cp.on("error", data => {
                 this.logger.log(`Error: ${ String(data) }`);
-                this.logger.log(`${pathForCss} not compile`);
+                this.logger.log(`${path.join(dirForCss, this.nameForCss)} not compile`);
                 rej();
             });
 
             cp.on("close", () => {
-                isWithoutError && this.logger.log(`${pathForCss} was successfully compiled`);
-                res();
+                isWithoutError && this.logger.log(`${path.join(dirForCss, this.nameForCss)} was successfully compiled`);
+                res(true);
             });
         });
     }
 
     async createAdditionalStyles() {
+        await this.findAdditionalObservables();
+        await this.compileAdditionalStyles();
+    }
+
+    async findAdditionalObservables() {
         const childDirs = await readdir(this.additionalDirForCss);
         let allLess: string [] = [];
         for (const dirName of childDirs) {
@@ -226,34 +218,22 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
             allLess = allLess.concat(result);
         }
         this.additionalLess = allLess;
-        await this.compileAdditionalStyles();
     }
 
     async getStartedLessMonitoring () {
 
         this.startLogger();
-
-        // await this.rebuildLess();
-
-        // if (this.errors.size > 0) {
-        //     this.checkErrors();
-        //     return;
-        // }
-
         if (this.additionalDirForCss) {
-            await this.createAdditionalStyles();
-                this.fillObservable();
-            }
-
-        if (2 < 5) {
-            if (this.errors.size > 0) {
-                this.checkErrors();
-                return;
-            }
-            await this.mainLessMonitoring();
+            await this.findAdditionalObservables();
+            this.fillObservable();
         }
-
-
+        await this.mainLessMonitoring();
+        await this.rebuildLess();
+        if (this.errors.size > 0) {
+            this.checkErrors();
+            return;
+        }
+        await this.compileAdditionalStyles();
     }
 
 }
