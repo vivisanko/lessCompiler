@@ -74,6 +74,7 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
 
     private async compileAdditionalStyles() {
         let controller = new EventEmitter();
+        controller.setMaxListeners(0);
         const promisesOfRecompile = this.additionalLess.map(additionalPath => this.rebuildLess(this.filePathMain, path.parse(additionalPath).dir, controller));
 
         await Promise.all(promisesOfRecompile);
@@ -101,6 +102,7 @@ export class LessWatcher extends MatchChecking implements ILessWatcher {
 
     private createChangeListener (observables: Map <string, string>) {
         const changesEmitter = new EventEmitter();
+        changesEmitter.setMaxListeners(0);
         let watchers = Array.from(observables.keys()).map(key => {
             return fs.watch(key, (_eType, _fileName) => {
                 if (_eType === "change" && _fileName === path.parse(key).base) {
