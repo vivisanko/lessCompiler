@@ -16,11 +16,24 @@ const config = {
 const compilerLess = new LessWatcher(config);
     compilerLess.startLogger();
     compilerLess.rebuildLess()
-    .then(() => compilerLess.checkErrors())
-    .catch(err => {throw err; });
-
-if (config.pathToVariables) {
-    compilerLess.createAdditionalStyles()
-    .then(() => compilerLess.checkErrors())
-    .catch(err => {throw err; });
-}
+    .then(() => new Promise((res, rej) => {
+        if (compilerLess.checkIsWithErrors()) {
+            compilerLess.logErrors();
+            rej();
+        }
+        res();
+    }))
+    .then(() => {
+        if (config.pathToVariables) {
+            compilerLess.createAdditionalStyles()
+            .then(() => new Promise((res, rej) => {
+                if (compilerLess.checkIsWithErrors()) {
+                    compilerLess.logErrors();
+                    rej();
+                }
+                res();
+            }))
+            .catch(_err => {});
+        }
+    })
+    .catch(_err => {});
