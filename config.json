@@ -5,7 +5,7 @@
         "fileDirMain": "../testProject/public",
         "pathToVariables": "../testProject/public/customization/variablesLibrary.less",
         "additionalDirForCss": "../testProject/public/brands",
-        "nameForCss": "style.css"
+        "nameForCss": "style.min.css"
     },
     "tscCompiler": {
         "pathToTsc": "node_modules/typescript/bin/tsc",

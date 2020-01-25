@@ -14,26 +14,5 @@ const config = {
 };
 
 const compilerLess = new LessWatcher(config);
-    compilerLess.startLogger();
-    compilerLess.rebuildLess()
-    .then(() => new Promise((res, rej) => {
-        if (compilerLess.checkIsWithErrors()) {
-            compilerLess.logErrors();
-            rej();
-        }
-        res();
-    }))
-    .then(() => {
-        if (config.pathToVariables) {
-            compilerLess.createAdditionalStyles()
-            .then(() => new Promise((res, rej) => {
-                if (compilerLess.checkIsWithErrors()) {
-                    compilerLess.logErrors();
-                    rej();
-                }
-                res();
-            }))
-            .catch(_err => {});
-        }
-    })
+    compilerLess.getStartedLessCompiler()
     .catch(_err => {});
